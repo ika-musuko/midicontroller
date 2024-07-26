@@ -28,34 +28,44 @@ def render_text(text, screen, font, center, color):
     text_rect = text.get_rect(center=center)
     screen.blit(text, text_rect)
 
+SCALE = 2
+
 def update_screen(screen, display_data):
     screen.fill((255, 255, 255))
 
-    big_font = pygame.font.Font(None, 22)
-    small_font = pygame.font.Font(None, 14)
+    big_font = pygame.font.Font(None, SCALE * 22)
+    small_font = pygame.font.Font(None, SCALE * 14)
 
     # notes
     render_text(
         text=note_set_string(display_data.notes),
         screen=screen,
         font=big_font,
-        center=(75, 15),
+        center=(SCALE * 75, SCALE * 15),
         color=(0, 0, 0)
     )
     render_text(
         text=f'T: {display_data.transpose}',
         screen=screen,
         font=small_font,
-        center=(15, 42),
+        center=(SCALE * 15, SCALE * 42),
         color=(0, 0, 0)
     )
     render_text(
         text=f'V: {display_data.velocity}',
         screen=screen,
         font=small_font,
-        center=(130, 42),
+        center=(SCALE * 130, SCALE * 42),
         color=(0, 0, 0)
     )
+    if display_data.sustain:
+        render_text(
+            text='SUSTAIN',
+            screen=screen,
+            font=small_font,
+            center=(SCALE * 75, SCALE * 42),
+            color=(128, 0, 0)
+        )
 
     pygame.display.update()
     pygame.display.flip()
@@ -67,7 +77,7 @@ def init_window():
     pygame.font.init()
 
     pygame.display.set_caption('midi controller')
-    screen = pygame.display.set_mode((150, 50))
+    screen = pygame.display.set_mode((SCALE * 150, SCALE * 50))
 
     # TODO: set always pinned to top
 
@@ -103,7 +113,7 @@ class Controller:
     def __init__(self, midiout):
         self.midiout = midiout
 
-        self.base_note = {
+        QUART = {
             pygame.K_z:         55,
             pygame.K_x:         56,
             pygame.K_c:         57,
@@ -154,6 +164,101 @@ class Controller:
             pygame.K_MINUS:        80,
             pygame.K_EQUALS:       81,
         }
+
+        FIFTHS = {
+            pygame.K_z:         53,
+            pygame.K_x:         54,
+            pygame.K_c:         55,
+            pygame.K_v:         56,
+            pygame.K_b:         57,
+            pygame.K_n:         58,
+            pygame.K_m:         59,
+            pygame.K_COMMA:     60,
+            pygame.K_PERIOD:    61,
+            pygame.K_SLASH:     62,
+
+            pygame.K_a:         60,
+            pygame.K_s:         61,
+            pygame.K_d:         62,
+            pygame.K_f:         63,
+            pygame.K_g:         64,
+            pygame.K_h:         65,
+            pygame.K_j:         66,
+            pygame.K_k:         67,
+            pygame.K_l:         68,
+            pygame.K_SEMICOLON: 69,
+            pygame.K_QUOTE:     70,
+
+            pygame.K_q:            67,
+            pygame.K_w:            68,
+            pygame.K_e:            69,
+            pygame.K_r:            70,
+            pygame.K_t:            71,
+            pygame.K_y:            72,
+            pygame.K_u:            73,
+            pygame.K_i:            74,
+            pygame.K_o:            75,
+            pygame.K_p:            76,
+            pygame.K_LEFTBRACKET:  77,
+            pygame.K_RIGHTBRACKET: 78,
+            pygame.K_BACKSLASH:    79,
+
+            pygame.K_1:            74,
+            pygame.K_2:            75,
+            pygame.K_3:            76,
+            pygame.K_4:            77,
+            pygame.K_5:            78,
+            pygame.K_6:            79,
+            pygame.K_7:            80,
+            pygame.K_8:            81,
+            pygame.K_9:            82,
+            pygame.K_0:            83,
+            pygame.K_MINUS:        84,
+            pygame.K_EQUALS:       85,
+        }
+
+        CHROMA = {
+            pygame.K_q:            60,
+            pygame.K_w:            61,
+            pygame.K_e:            62,
+            pygame.K_r:            63,
+            pygame.K_t:            64,
+            pygame.K_y:            65,
+            pygame.K_u:            66,
+            pygame.K_i:            67,
+            pygame.K_o:            68,
+            pygame.K_p:            69,
+            pygame.K_LEFTBRACKET:  70,
+            pygame.K_RIGHTBRACKET: 71,
+
+            pygame.K_a:         72,
+            pygame.K_s:         73,
+            pygame.K_d:         74,
+            pygame.K_f:         75,
+            pygame.K_g:         76,
+            pygame.K_h:         77,
+            pygame.K_j:         78,
+            pygame.K_k:         79,
+            pygame.K_l:         80,
+            pygame.K_SEMICOLON: 81,
+            pygame.K_QUOTE:     82,
+            pygame.K_BACKSLASH: 83,
+
+            pygame.K_z:         84,
+            pygame.K_x:         85,
+            pygame.K_c:         86,
+            pygame.K_v:         87,
+            pygame.K_b:         88,
+            pygame.K_n:         89,
+            pygame.K_m:         90,
+            pygame.K_COMMA:     91,
+            pygame.K_PERIOD:    92,
+            pygame.K_SLASH:     93,
+
+        }
+
+        self.base_note = FIFTHS
+
         self.notes = set()
         self.transpose = 0
         self.velocity = 112
@@ -167,7 +272,7 @@ class Controller:
 
     def _release(self):
         for note in range(0, 127):
-            midiout_off(self.midiout, note)
+            self._note_off(note)
 
     def _note_on(self, note):
         midiout_on(self.midiout, note, self.velocity)
@@ -175,7 +280,8 @@ class Controller:
 
     def _note_off(self, note):
         midiout_off(self.midiout, note)
-        self.notes.remove(note)
+        if note in self.notes:
+            self.notes.remove(note)
 
 
     def handle_keyup(self, key):
@@ -201,6 +307,11 @@ class Controller:
             self.transpose = \
                 clamp(self.transpose + transpose_delta, *Controller.TRANSPOSE_RANGE)
         # misc
+        elif key == pygame.K_TAB:
+            self.sustain = not self.sustain
+            if not self.sustain:
+                self._release()
+
         elif key == pygame.K_ESCAPE:
             self._release()
 
@@ -210,17 +321,19 @@ class DisplayData:
     notes: set
     velocity: int
     transpose: int
+    sustain: bool
 
     def update_from(self, controller):
         self.notes = controller.notes
         self.velocity = controller.velocity
         self.transpose = controller.transpose
+        self.sustain = controller.sustain
 
 
 
 def mainloop(midiout, screen):
     controller = Controller(midiout)
-    display_data = DisplayData(set(), 0, 0)
+    display_data = DisplayData(set(), 0, 0, False)
 
     running = True
 
